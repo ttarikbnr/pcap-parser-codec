@@ -4,4 +4,6 @@ edition = "2018"
 name = "pcap-parser"
 version = "0.1.0"
 [dependencies]
+bytes = "*"
 nom = "*"
+tokio = "*"

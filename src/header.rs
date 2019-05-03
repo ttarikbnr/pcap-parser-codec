@@ -1,9 +1,30 @@
 use nom::{be_u32, be_u16, be_i32, le_u32, le_u16, le_i32};
+use bytes::{BytesMut, BufMut};
 
-const NORMAL     : u32 = 0xa1b2c3d4;
-const SWAPPED    : u32 = 0xd4c3b2a1; 
-const NORMAL_NS  : u32 = 0xa1b23c4d;
-const SWAPPED_NS : u32 = 0x4d3cb2a1;
+const NORMAL            : u32   = 0xa1b2c3d4;
+const SWAPPED           : u32   = 0xd4c3b2a1; 
+const NORMAL_NS         : u32   = 0xa1b23c4d;
+const SWAPPED_NS        : u32   = 0x4d3cb2a1;
+const HEADER_LENGTH     : usize = 24;
+
+pub fn parse_global_header(src: &mut BytesMut) -> Result<Option<HeaderRaw>, std::io::Error>{
+    if src.len() < HEADER_LENGTH {
+        return Ok(None)
+    } else {
+        let magic_bytes = &src[0..4];
+        let (_, magic_number) = be_u32(magic_bytes).unwrap(); // TODO proper error handling
+        let mut header_raw = if is_little_endian(magic_number) {
+            let (_, header_raw) = parse_header_le(&src[0..HEADER_LENGTH]).unwrap();
+            header_raw
+        } else {
+            let (_, header_raw) = parse_header_be(&src[0..HEADER_LENGTH]).unwrap();
+            header_raw
+        };
+        header_raw.magic_number = magic_number;
+        src.split_to(HEADER_LENGTH);
+        return Ok(Some(header_raw))
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct HeaderRaw {
@@ -17,8 +38,8 @@ pub struct HeaderRaw {
 }
 
 impl HeaderRaw {
-    pub fn is_swapped(&self) -> bool {
-        self.magic_number == SWAPPED || self.magic_number == SWAPPED_NS 
+    pub fn is_little_endian(&self) -> bool {
+        is_little_endian(self.magic_number)
     }
 
     pub fn is_ns(&self) -> bool {
@@ -26,7 +47,12 @@ impl HeaderRaw {
     }
 }
 
-named!(parse_header<HeaderRaw>,
+fn is_little_endian(magic_number: u32) -> bool {
+    magic_number == SWAPPED || magic_number == SWAPPED_NS 
+}
+
+
+named!(parse_header_be<HeaderRaw>,
     do_parse!(
         magic_number    : be_u32 >>
         version_major   : be_u16 >>
@@ -49,7 +75,7 @@ named!(parse_header<HeaderRaw>,
     ) 
 );
 
-named!(parse_header_swapped<HeaderRaw>,
+named!(parse_header_le<HeaderRaw>,
     do_parse!(
         magic_number    : be_u32 >>
         version_major   : le_u16 >>

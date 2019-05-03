@@ -1,18 +1,20 @@
 use nom::{be_u32, le_u32};
 
+
+#[derive(Clone, Debug)]
 pub struct PacketHeader {
     timestamp_ns: u64,
-    packet_length: usize 
+    payload_length: usize
 }
 
 impl PacketHeader {
     pub fn from_raw(raw_header: &PacketHeaderRaw, is_ns: bool) -> Self {
         let timestamp_ns = raw_header.get_timestamp_as_ns(is_ns);
-        let packet_length = raw_header.get_packet_length();
+        let payload_length = raw_header.get_packet_length();
 
         Self {
             timestamp_ns,
-            packet_length
+            payload_length
         }
     }
 }
@@ -44,7 +46,7 @@ impl PacketHeaderRaw {
 
 
 
-named!(parse_packet_header<PacketHeaderRaw>,
+named!(pub parse_packet_header_be<PacketHeaderRaw>,
     do_parse!(
         ts_sec      : be_u32 >>
         ts_usec     : be_u32 >>
@@ -61,8 +63,7 @@ named!(parse_packet_header<PacketHeaderRaw>,
     )
 );
 
-
-named!(parse_packet_header_swapped<PacketHeaderRaw>,
+named!(pub parse_packet_header_le<PacketHeaderRaw>,
     do_parse!(
         ts_sec      : le_u32 >>
         ts_usec     : le_u32 >>
