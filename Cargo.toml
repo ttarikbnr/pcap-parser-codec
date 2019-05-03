@@ -1,0 +1,7 @@
+[package]
+authors = ["Tarik Binar <ttarikbnr@gmail.com>"]
+edition = "2018"
+name = "pcap-parser"
+version = "0.1.0"
+[dependencies]
+nom = "*"
