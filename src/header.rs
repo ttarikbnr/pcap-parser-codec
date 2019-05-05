@@ -1,5 +1,6 @@
 use nom::{be_u32, be_u16, be_i32, le_u32, le_u16, le_i32};
-use bytes::{BytesMut, BufMut};
+use bytes::{BytesMut};
+use std::io::{Error, ErrorKind};
 
 const NORMAL            : u32   = 0xa1b2c3d4;
 const SWAPPED           : u32   = 0xd4c3b2a1; 
@@ -7,23 +8,34 @@ const NORMAL_NS         : u32   = 0xa1b23c4d;
 const SWAPPED_NS        : u32   = 0x4d3cb2a1;
 const HEADER_LENGTH     : usize = 24;
 
-pub fn parse_global_header(src: &mut BytesMut) -> Result<Option<HeaderRaw>, std::io::Error>{
+pub fn parse_global_header(src: &mut BytesMut) -> Result<Option<HeaderRaw>, Error> {
     if src.len() < HEADER_LENGTH {
         return Ok(None)
-    } else {
-        let magic_bytes = &src[0..4];
-        let (_, magic_number) = be_u32(magic_bytes).unwrap(); // TODO proper error handling
-        let mut header_raw = if is_little_endian(magic_number) {
-            let (_, header_raw) = parse_header_le(&src[0..HEADER_LENGTH]).unwrap();
-            header_raw
-        } else {
-            let (_, header_raw) = parse_header_be(&src[0..HEADER_LENGTH]).unwrap();
-            header_raw
-        };
-        header_raw.magic_number = magic_number;
-        src.split_to(HEADER_LENGTH);
-        return Ok(Some(header_raw))
     }
+
+    let magic_bytes = &src[0..4];
+
+    let magic_number = match be_u32(magic_bytes) {
+        Ok((_, number)) => {
+           number
+        },
+        _ => {
+            return Err(std::io::Error::new(ErrorKind::InvalidInput, "Unexpected magic bytes!"));
+        }
+    };
+
+    let mut header_raw = if is_little_endian(magic_number) {
+        let (_, header_raw) = parse_header_le(&src[0..HEADER_LENGTH]).unwrap();
+        header_raw
+    } else {
+        let (_, header_raw) = parse_header_be(&src[0..HEADER_LENGTH]).unwrap();
+        header_raw
+    };
+
+    header_raw.magic_number = magic_number;
+    src.split_to(HEADER_LENGTH);
+
+    return Ok(Some(header_raw))
 }
 
 #[derive(Debug, Clone)]
