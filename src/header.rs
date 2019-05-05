@@ -42,8 +42,6 @@ pub fn parse_global_header(src: &mut BytesMut) -> Result<Option<HeaderRaw>, Erro
 
     src.split_to(HEADER_LENGTH);
 
-    header_raw.magic_number = magic_number;
-
     return Ok(Some(header_raw))
 }
 

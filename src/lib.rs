@@ -20,7 +20,8 @@ enum State{
 pub struct PcapCodec {
     state       : State,
     is_ns       : bool, 
-    is_le       : bool  // is little endian
+    is_le       : bool,  // is little endian
+    current_packet_header: Option<packet_header::PacketHeader>
 }
 
 impl PcapCodec {
@@ -28,7 +29,8 @@ impl PcapCodec {
         Self {
             state       : State::ParsingGlobalHeader,
             is_ns       : true,
-            is_le       : true
+            is_le       : true,
+            current_packet_header: None
         }
     }
 }
@@ -51,10 +53,24 @@ impl Decoder for PcapCodec {
                     }
                 }
                 State::ParsingPacketHeader => {
-                    unimplemented!()
+                    if let Some(packet_header) = packet_header::parse_packet_header(src, self.is_le, self.is_ns)? {
+                        self.current_packet_header = Some(packet_header);
+                        State::ParsingPacket
+                    } else {
+                        return Ok(None)
+                    }
                 }
                 State::ParsingPacket => {
-                    unimplemented!()
+                    if let Some(header) = self.current_packet_header.as_ref() {
+                        if let Some(packet) = packet::parse_packet(src, header)?{
+                            self.state = State::ParsingPacketHeader;
+                            return Ok(Some(packet))
+                        } else {
+                            return Ok(None)
+                        }
+                    } else {
+                        unreachable!()
+                    }
                 }
             };
             self.state = new_state;
