@@ -19,26 +19,23 @@ pub fn parse_global_header(src: &mut BytesMut) -> Result<Option<HeaderRaw>, Erro
            number
         },
         Err(_) => {
-            return Err(Error::new(ErrorKind::InvalidInput, "Unexpected endian recognition bytes!"));
+            return Err(Error::new(ErrorKind::InvalidInput, "Got error while parsing magic numbers!"));
         }
     };
 
-    let mut header_raw = if is_little_endian(magic_number) {
-        match parse_header_le(&src[0..HEADER_LENGTH]) {
+    let mut header_raw = {
+        let res = if is_little_endian(magic_number) {
+                parse_header_le(&src[0..HEADER_LENGTH]) 
+            } else {
+                parse_header_be(&src[0..HEADER_LENGTH])
+            };
+        match res {
             Ok((_, header_raw)) => {
                 header_raw
             }
-            Err(_) => {
-                return Err(Error::new(ErrorKind::InvalidInput, "Unexpected source of bytes!"));
-            }
-        }
-    } else {
-        match parse_header_be(&src[0..HEADER_LENGTH]) {
-            Ok((_, header_raw)) => {
-                header_raw
-            }
-            Err(_) => {
-                return Err(Error::new(ErrorKind::InvalidInput, "Unexpected source of bytes!"));
+            Err(err) => {
+                let err_msg = format!("Couldn't parse global header! {}", err);
+                return Err(Error::new(ErrorKind::InvalidInput, err_msg));
             }
         }
     };
