@@ -14,16 +14,13 @@ pub fn parse_global_header(src: &mut BytesMut) -> Result<Option<HeaderRaw>, Erro
         return Ok(None)
     }
 
-    let magic_number = match be_u32(&src[0..MAGIC_NUMBER_LENGTH]) {
-        Ok((_, number)) => {
-           number
-        },
-        Err(_) => {
-            return Err(Error::new(ErrorKind::InvalidInput, "Got error while parsing magic numbers!"));
-        }
-    };
+    let (_, magic_number) = be_u32(&src[0..MAGIC_NUMBER_LENGTH]).unwrap();
 
-    let mut header_raw = {
+    if !is_pcap(magic_number) {
+        return Err(Error::new(ErrorKind::InvalidData, "Wrong file format!"))
+    }
+
+    let header_raw = {
         let res = if is_little_endian(magic_number) {
                 parse_header_le(&src[0..HEADER_LENGTH]) 
             } else {
@@ -64,6 +61,11 @@ impl HeaderRaw {
     pub fn is_ns(&self) -> bool {
         self.magic_number == NORMAL_NS || self.magic_number == SWAPPED_NS
     }
+}
+
+fn is_pcap(magic_number: u32) -> bool {
+    magic_number == NORMAL || magic_number == SWAPPED ||
+    magic_number == NORMAL_NS || magic_number == SWAPPED_NS 
 }
 
 fn is_little_endian(magic_number: u32) -> bool {
