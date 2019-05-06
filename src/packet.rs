@@ -16,6 +16,14 @@ impl Packet {
             payload
         }
     }
+
+    pub fn payload_len(&self) -> usize {
+        self.payload.len()
+    }
+
+    pub fn payload(&self) -> &[u8] {
+        self.payload.as_ref()
+    }
 }
 
 pub fn parse_packet(src: &mut BytesMut, packet_header: &PacketHeader) -> Result<Option<Packet>, Error> {
